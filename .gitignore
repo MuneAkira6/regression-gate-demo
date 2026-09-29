@@ -1,0 +1,5 @@
+node_modules/
+.claude/
+reports/
+test-results/
+playwright-report/

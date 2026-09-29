@@ -1,0 +1,26 @@
+{
+  "name": "regression-gate-demo",
+  "version": "0.0.0",
+  "private": true,
+  "description": "A Playwright regression suite, a coverage report and a quality gate that tells four kinds of red apart",
+  "type": "module",
+  "packageManager": "pnpm@11.28.0",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "app": "node apps/sample-app/server.ts",
+    "test": "vitest run",
+    "e2e": "playwright test",
+    "gate": "node tools/gate.ts",
+    "coverage": "node tools/coverage-report.ts",
+    "lint": "biome check .",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.2.0",
+    "@playwright/test": "1.62.1",
+    "@types/node": "^24.0.0",
+    "typescript": "^7.0.0",
+    "vitest": "^5.0.0",
+    "yaml": "^2.9.1"
+  }
+}
