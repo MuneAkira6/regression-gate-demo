@@ -257,8 +257,12 @@ orphans (a test id not in the sheet)   : none
 | `pnpm e2e`（生のスイート） | 21 件、`1 failed` / `20 passed`、exit 1 — 赤は申告済みの TB-011 だけです |
 | `pnpm gate` | 6 単位、`0 NEW RED, 0 INCONCLUSIVE, 1 KNOWN RED, 0 WENT GREEN`、exit 0 |
 | `pnpm coverage` | 23 行に対して 21 行、分母 22、95.5%、exit 0 |
-| `pnpm lint` | `Checked 22 files`、exit 0 |
+| `pnpm lint` | `Checked 26 files`、exit 0 |
 | `pnpm typecheck` | 出力なし、exit 0 |
+
+この表の数字は、実行の後に Ubuntu 20.04 と Windows 11 の両方で測り直し、同じ結果になりました（2026-09-30。
+Ubuntu は新しく展開した作業ツリー、Windows は Node v24.15.0）。「動かし方」の 1 行も、どちらでも exit 0 で
+終わります。
 
 `pnpm test` の 34 件のうち 12 件はゲートの負の自己テストです。四つの分類と四つの終了コード（0 / 1 / 2 / 3）を
 すべて、本物のゲートを fixture に対して走らせて出しています。INCONCLUSIVE は、fixture のテストが自分の単位の
@@ -279,11 +283,6 @@ https://github.com/MuneAkira6/engineering-case-studies/blob/main/02-test-automat
 - **`reports/gate.json` は最後に走ったゲートのものです。** 自己テストもゲートの実体を走らせるので、
   `pnpm test` は本物のスイートの結果を上書きします。本物の結果が必要なときは `pnpm gate` を走らせ直して
   ください。
-- **`pnpm lint` と `pnpm typecheck` は `test/**` と `vitest.config.ts` を見ていません。** 与えられた
-  `tsconfig.json` と `biome.json` が `tests` を含めていて `test` を含めていないためです。この 2 ファイルは
-  変更してよい対象ではなかったので直していません。中身が未検証というわけではなく、34 件は `pnpm test` が
-  実行して通っていますが、型の誤りは `pnpm typecheck` ではなく実行時に出ます。判断が必要な項目として
-  [PUBLISHING.md](PUBLISHING.md) の公開前チェックリストに載せています。
 - 認証、永続化、実際のメール送信、Docker は対象外です。データはプロセス内のメモリだけに持ちます。
 - 契約に削除の経路がないので、`POST /api/tasks` で作られたタスクはプロセスが生きているあいだ残ります。
   そのためタスク一覧の検査は「5 件ちょうど」ではなく「この 5 件がある」「期日なしは期日ありより後ろ」という
@@ -306,6 +305,15 @@ https://github.com/MuneAkira6/engineering-case-studies/blob/main/02-test-automat
 レビュー側は一度 G2 を差し戻しました。カバレッジの `automated` 列が計画の読み上げになっていて、割合が下がり
 得なかったためです。その指摘と、直したこと、そして「直した検査が本当に落ちること」を確かめた記録も
 PROGRESS.md に残っています。
+
+実行の後に、人が次の変更を加えました。内容と理由は [goal-pack/SCOPE.md](goal-pack/SCOPE.md) の
+「Changes after the run」にあります。
+
+- lint と typecheck の対象に `test/` と `vitest.config.ts` を加えました。実行中は変更してはいけない
+  ファイルだったため、ワーカーは直さずに報告していました。
+- Windows で `pnpm gate` が動かなかった原因を 3 点直しました。Playwright の起動方法、spec ファイルの
+  パスの区切り文字、`/version` を読むときの接続の使い回しです。
+- `goal-pack/` の中にあった実行ホストの絶対パスを `~` に置き換えました。
 
 ---
 

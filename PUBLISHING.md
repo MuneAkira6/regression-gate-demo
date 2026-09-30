@@ -24,7 +24,11 @@ e2e-testing  typescript  nodejs  qa  vitest
 
 ## 公開前チェックリスト
 
-### 要判断 1 — `test/**` が lint と typecheck の対象外です
+### 要判断 1 — `test/**` が lint と typecheck の対象外でした（対応済み）
+
+**対応済み（2026-09-30、実行の後に人が変更）。** 下にある変更をそのまま入れ、`vitest.config.ts` も対象に
+加えました。`pnpm lint` は `Checked 26 files`、`pnpm typecheck` はエラーなしです。新しく対象に入った 4 ファイルに
+直すべき指摘はありませんでした。以下は、判断を求めたときの記録です。
 
 **事実。** 与えられた `tsconfig.json` の `include` は `["apps", "tools", "tests", "playwright.config.ts"]`、
 `biome.json` の `includes` は `["apps/**", "tools/**", "tests/**", "playwright.config.ts"]` です。どちらも
@@ -61,7 +65,11 @@ e2e-testing  typescript  nodejs  qa  vitest
 
 追加後は `pnpm lint` と `pnpm typecheck` を走らせ、新しく見えるようになったファイルの指摘を解消してください。
 
-### 要判断 2 — `goal-pack/` を今のまま公開するかどうか
+### 要判断 2 — `goal-pack/` を今のまま公開するかどうか（対応済み）
+
+**対応済み（2026-09-30）。** 下の選択肢の 2 を取りました。PROGRESS.md と BUS-MEMORY.md の絶対パスを `~/…` に
+置き換え、アカウント名は残っていません。BUS-LOG.md のセッション識別子は、この実行の外では何も指さないので
+残しました。下の表は、伏せる前の実測です。
 
 `goal-pack/` はこの実行の監査記録です。契約（SCOPE.md）、台帳（PROGRESS.md）、レビューの全文
 （BUS-REVIEWS.md）、レビュー側の記憶（BUS-MEMORY.md）が入っていて、**残す前提**のものです。各行の判定が
@@ -104,11 +112,12 @@ e2e-testing  typescript  nodejs  qa  vitest
 
 ### 公開前の機械的な確認
 
-以下はコマンドで確かめられます。括弧内はこのリポジトリで確認済みの結果です。
+以下はコマンドで確かめられます。括弧内はこのリポジトリで確認済みの結果です。Ubuntu 20.04 と Windows 11 の
+両方で同じ結果になりました。
 
 - [ ] `git diff --stat -- LICENSE` が空であること（空。MIT License のまま変更していません）
 - [ ] `pnpm install --frozen-lockfile`（`Done in 401ms using pnpm v11.28.0`、exit 0）
-- [ ] `pnpm lint`（`Checked 22 files`、exit 0）
+- [ ] `pnpm lint`（`Checked 26 files`、exit 0）
 - [ ] `pnpm typecheck`（出力なし、exit 0）
 - [ ] `pnpm test`（`Tests  34 passed (34)`、exit 0）
 - [ ] `pnpm gate`（`0 NEW RED, 0 INCONCLUSIVE, 1 KNOWN RED, 0 WENT GREEN`、exit 0）

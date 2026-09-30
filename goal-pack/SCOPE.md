@@ -158,6 +158,8 @@ defensible default for a newly created task on a board whose other filter value 
 
 ### D10 — `pnpm lint` and `pnpm typecheck` do not cover `test/**` or `vitest.config.ts`
 
+*Resolved after the run: see "Changes after the run", item 1.*
+
 **As built, and not fixed.** The given `tsconfig.json` includes `["apps", "tools", "tests",
 "playwright.config.ts"]` and the given `biome.json` the same set — `tests`, not `test`, while the frozen
 contract puts the self-tests in `test/`. Measured: all three `test/*.test.ts` files and
@@ -259,6 +261,34 @@ dated one.
 long as the app process. An absolute count would go red on the second of two consecutive `pnpm e2e`
 runs and under the gate, which runs every unit against one long-lived app — for a reason that has
 nothing to do with the product. The relational form is also closer to what the contract actually states.
+
+## Changes after the run
+
+Made by a human on 2026-09-30, after the bus had answered DONE; not reviewed by the bus. Each was
+verified from a fresh working tree on the run's Ubuntu 20.04 host and on Windows 11 (Node v24.15.0):
+`pnpm i && pnpm exec playwright install chromium && pnpm test && pnpm gate` exits 0 on both, with
+`Tests  34 passed (34)` and `0 NEW RED, 0 INCONCLUSIVE, 1 KNOWN RED, 0 WENT GREEN`.
+
+1. **D10 resolved.** `tsconfig.json` now includes `test` and `vitest.config.ts`, and `biome.json` the
+   same. `pnpm lint` reads `Checked 26 files`; `pnpm typecheck` is clean; the four newly checked files
+   needed no change. Incidental finding 1 of PROGRESS.md and 要判断 1 of PUBLISHING.md are closed by it.
+2. **The gate on Windows.** On Windows `pnpm gate` stopped with an input error before any unit ran.
+   Three causes, each measured, each fixed in `tools/gate.ts` without changing what the gate decides:
+   - The unit command spawned `node_modules/.bin/playwright`, a shell script that Windows cannot spawn
+     without a shell (`spawnSync` answered `ENOENT`). It now runs Playwright's CLI script with the
+     current `node`, the way the app was already started. This changes D4's command to
+     `node <@playwright/test/cli> test <file> --reporter=json --retries=0 --workers=1`.
+   - Playwright reads a file argument as a regular expression, so a Windows path with `\` matched no
+     test (`Error: No tests found`). Spec paths now use `/` on every platform, which also keeps the
+     unit order and the printed names identical everywhere.
+   - `/version` was read with `fetch`, which reuses a pooled keep-alive socket. The unit runs through
+     `spawnSync`, which blocks the gate's event loop, so a socket the app closed during a unit longer
+     than its keep-alive timeout (5 s) still looked reusable. On Windows the next read failed with
+     `ECONNRESET`: reproduced with a 6-second block, and not with a 3-second one; the same probe
+     passed on the Ubuntu host. `/version` is now read on a fresh connection each time.
+3. **Host details redacted.** The absolute paths of the run's host in PROGRESS.md and BUS-MEMORY.md,
+   which contained the account name, now read `~/…`. The session id in BUS-LOG.md is kept; it
+   identifies nothing outside this run. This closes 要判断 2 of PUBLISHING.md.
 
 ## The sample app, as built
 

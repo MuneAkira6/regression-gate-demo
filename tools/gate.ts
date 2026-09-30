@@ -23,8 +23,10 @@
 
 import { type ChildProcess, spawn, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { get } from "node:http";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { join, resolve, sep } from "node:path";
 import { parse } from "yaml";
 
 export type Declaration = { id: string; reason: string; source: string; declared: string };
@@ -98,13 +100,17 @@ export function readKnownReds(path: string): Declaration[] {
   });
 }
 
-/** Every spec file under the given directories, in file-name order across all of them. */
+/**
+ * Every spec file under the given directories, in file-name order across all of them. Paths use `/`
+ * on every platform: Playwright reads a file argument as a regular expression, so a Windows `\`
+ * would match nothing, and the order and the printed names stay the same everywhere.
+ */
 export function specFiles(dirs: string[]): string[] {
   const out: string[] = [];
   const walk = (dir: string) => {
     if (!existsSync(dir)) return;
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      const path = join(dir, entry.name);
+      const path = join(dir, entry.name).split(sep).join("/");
       if (entry.isDirectory()) walk(path);
       else if (entry.name.endsWith(".spec.ts")) out.push(path);
     }
@@ -115,14 +121,40 @@ export function specFiles(dirs: string[]): string[] {
 
 // --- the app under test ---------------------------------------------------------------------------
 
-async function readVersion(base: string): Promise<Version> {
-  const response = await fetch(`${base}/version`);
-  if (!response.ok) throw new InputError(`the app answered ${response.status} on ${base}/version`);
-  const body = (await response.json()) as Version;
-  if (typeof body.version !== "string" || typeof body.build !== "string") {
-    throw new InputError(`the app returned no version/build on ${base}/version`);
-  }
-  return body;
+/**
+ * Read `/version` on a fresh connection. A unit runs Playwright through `spawnSync`, which blocks this
+ * event loop for the whole unit, so a pooled keep-alive socket that the app closed in the meantime
+ * still looks reusable. On Windows the read after a unit longer than the app's keep-alive timeout
+ * (5 s) then fails with ECONNRESET. One connection per read behaves the same on every platform.
+ */
+function readVersion(base: string): Promise<Version> {
+  return new Promise((resolveVersion, reject) => {
+    const request = get(`${base}/version`, { agent: false }, (response) => {
+      let text = "";
+      response.setEncoding("utf8");
+      response.on("data", (chunk: string) => {
+        text += chunk;
+      });
+      response.on("error", reject);
+      response.on("end", () => {
+        const status = response.statusCode ?? 0;
+        if (status < 200 || status > 299) {
+          reject(new InputError(`the app answered ${status} on ${base}/version`));
+          return;
+        }
+        try {
+          const body = JSON.parse(text) as Version;
+          if (typeof body.version !== "string" || typeof body.build !== "string") {
+            throw new InputError(`the app returned no version/build on ${base}/version`);
+          }
+          resolveVersion(body);
+        } catch (error) {
+          reject(error);
+        }
+      });
+    });
+    request.on("error", reject);
+  });
 }
 
 /**
@@ -200,7 +232,9 @@ function caseId(title: string): string {
   return /^(TB-\d{3})\s/.exec(title)?.[1] ?? title;
 }
 
-const PLAYWRIGHT = join("node_modules", ".bin", "playwright");
+// Playwright's own CLI script, run by this node like the app is. The `.bin/playwright` shim is a shell
+// script, and on Windows it cannot be spawned without a shell (spawnSync answers ENOENT).
+const PLAYWRIGHT_CLI = createRequire(import.meta.url).resolve("@playwright/test/cli");
 
 function runUnit(file: string, port: number, reportPath: string): { code: number; out: string } {
   const env: Record<string, string> = {
@@ -211,8 +245,8 @@ function runUnit(file: string, port: number, reportPath: string): { code: number
     PLAYWRIGHT_JSON_OUTPUT_NAME: reportPath,
   };
   const result = spawnSync(
-    PLAYWRIGHT,
-    ["test", file, "--reporter=json", "--retries=0", "--workers=1"],
+    process.execPath,
+    [PLAYWRIGHT_CLI, "test", file, "--reporter=json", "--retries=0", "--workers=1"],
     { env, encoding: "utf8", timeout: 300_000 },
   );
   return {
