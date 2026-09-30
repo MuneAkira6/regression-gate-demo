@@ -1,0 +1,5 @@
+# Valid YAML, but a mapping where the gate requires a list of entries.
+id: TB-902
+reason: A single mapping instead of a list.
+source: nowhere
+declared: 2026-09-30

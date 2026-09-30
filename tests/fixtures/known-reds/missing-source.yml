@@ -1,0 +1,4 @@
+# An input error on purpose: the entry has a reason and a date but no source, so nobody can check it.
+- id: TB-902
+  reason: Declared with no source, which is exactly what must not be accepted.
+  declared: 2026-09-30

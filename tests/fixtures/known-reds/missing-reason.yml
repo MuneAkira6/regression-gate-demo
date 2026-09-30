@@ -1,0 +1,8 @@
+# An input error on purpose: the second entry has a source and a date but no reason.
+- id: TB-902
+  reason: This one is complete.
+  source: tests/fixtures/known-red/known-red.spec.ts
+  declared: 2026-09-30
+- id: TB-902b
+  source: somewhere
+  declared: 2026-09-30

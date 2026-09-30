@@ -1,0 +1,19 @@
+# Declared reds — a red that is already understood and does not mean the product is broken.
+#
+# Only that kind of red belongs here. A product defect must never be hidden behind a declaration: the
+# list exists to keep the gate's signal readable, not to make it quiet. Every declaration needs a
+# reason and a source, and the gate refuses to run without them.
+#
+# The gate never edits this file. When a declared red passes it reports WENT GREEN and leaves the
+# removal to a person, because re-baselining is a judgement — and a tool that re-baselines itself will
+# eventually bless a real regression.
+
+- id: TB-011
+  reason: >-
+    This demo has no mail transport, so the test email cannot be sent. The red is caused by the
+    environment, not by the product. The case keeps expecting the email to be sent, because that is
+    the product's specified behaviour and lowering it to expect the failure would delete the only
+    signal that the feature does not work. That POST /api/notifications/test answers 503 is itself
+    contracted, and is checked green by TB-021.
+  source: "goal-pack/SCOPE.md — the POST /api/notifications/test row of the route table, and \"The suite\""
+  declared: 2026-09-30

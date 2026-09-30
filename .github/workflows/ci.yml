@@ -1,0 +1,82 @@
+name: regression gate
+
+on:
+  # Started by hand, not on every merge. The practice this repository demonstrates ran the regression
+  # gate as a manually triggered workflow (goal-pack/materials/practice.md, section 8). A gate that
+  # fires on every merge gets skimmed, and a gate that gets skimmed is the failure the four classes
+  # exist to prevent.
+  workflow_dispatch:
+
+jobs:
+  gate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      # packageManager in package.json pins pnpm 11.28.0; corepack is what honours it on a runner.
+      #
+      # CI ONLY — do not run this on a development machine without checking what `pnpm` currently
+      # resolves to. `corepack enable` overwrites the `pnpm` shim in Node's bin directory, and if the
+      # pnpm on that machine is an ordinary global install rather than a corepack-managed one, the
+      # shim is replaced by one that re-downloads pnpm from the registry. On the host this repository
+      # was built on that download fails (corepack's fetch does not use the environment's TLS trust),
+      # which takes pnpm out until the shim is put back. See PROGRESS.md, AC-13 and change-ledger
+      # row 13.
+      - name: Enable corepack
+        run: corepack enable
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # --with-deps also installs the system libraries Chromium needs, which requires root. That is
+      # right for a fresh runner, and it is the one command in this workflow that was NOT run on the
+      # development host: there the libraries are already present and the browsers live outside the
+      # repository, so `playwright install chromium` was used instead. See PROGRESS.md, AC-13.
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      # Also covers the gate's negative self-tests, which run the real gate against the fixtures. They
+      # overwrite reports/gate.json, which is why the gate step below comes after them: whichever gate
+      # run finishes last owns that file.
+      - name: Self-tests
+        run: pnpm test
+
+      # `pnpm e2e` exits 1 on a healthy repository. TB-011 is a declared red, and the raw suite has no
+      # notion of a declaration — only the gate has. So this step's exit code must not decide the job,
+      # or a healthy repository would show red for ever. It still runs, because its list output and
+      # reports/e2e.json are worth having on every run.
+      #
+      # If you are reading this because CI went red: look at the gate step, not this one. Do NOT
+      # "fix" this by weakening TB-011's assertion or by making `pnpm e2e` exit 0 — the first deletes
+      # the only signal that the test-email feature does not work, and the second makes the measuring
+      # side lie. The reasoning is in goal-pack/PROGRESS.md under "Contract changes".
+      - name: Regression suite (raw; a declared red fails this step by design)
+        run: pnpm e2e
+        continue-on-error: true
+
+      # The verdict. Runs the same six spec files as the step above, one file per unit, reading the
+      # version under test before and after each one: exit 1 on a new red, 2 on an inconclusive run,
+      # 3 on bad input, 0 when the only reds are declared.
+      - name: Quality gate (this step decides the job)
+        run: pnpm gate
+
+      - name: Coverage against the manual test sheet
+        run: pnpm coverage
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports
+          path: reports/

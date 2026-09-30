@@ -1,0 +1,13 @@
+# Declarations used only by the gate's self-tests, for the fixture ids TB-902, TB-903 and TB-905.
+- id: TB-902
+  reason: A fixture red declared so the gate has a KNOWN RED to classify.
+  source: tests/fixtures/known-red/known-red.spec.ts
+  declared: 2026-09-30
+- id: TB-903
+  reason: A fixture declared red that now passes, so the gate has a WENT GREEN to report.
+  source: tests/fixtures/went-green/went-green.spec.ts
+  declared: 2026-09-30
+- id: TB-905
+  reason: A fixture declared red that passes across a redeployment.
+  source: tests/fixtures/went-green-across-deploy/went-green-across-deploy.spec.ts
+  declared: 2026-09-30
